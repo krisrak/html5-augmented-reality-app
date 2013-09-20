@@ -160,13 +160,21 @@ function calculateDirection(degree){
     for(var i=0;i<pin.length;i++){
         if(Math.abs(pin[i].bearing - degree) <= 20){
         //    pin[i]['degree'] = pin[i].bearing - degree;
-            var away;
-            if(pin[i].distance>2){
-                away = Math.round(pin[i].distance) + " miles away";
+            var away, fontSize, fontColor;
+            if(pin[i].distance>5){
+                away = Math.round(pin[i].distance);
+                fontSize = "16";
+                fontColor = "#ccc";
+            } else if(pin[i].distance>2){
+                away = Math.round(pin[i].distance);
+                fontSize = "24";
+                fontColor = "#ddd";
             } else {
-                away = pin[i].distance.toFixed(2) + " miles away";
+                away = pin[i].distance.toFixed(2);
+                fontSize = "30";
+                fontColor = "#eee";
             }
-            $("#spot").append('<div class="name" data-id="'+i+'" style="margin-left:'+(((pin[i].bearing - degree) * 5)+50)+'px;width:'+($(window).width()-100)+'px">'+pin[i].name+'<div class="distance">'+ away +'</div></div>');
+            $("#spot").append('<div class="name" data-id="'+i+'" style="margin-left:'+(((pin[i].bearing - degree) * 5)+50)+'px;width:'+($(window).width()-100)+'px;font-size:'+fontSize+'px;color:'+fontColor+'">'+pin[i].name+'<div class="distance">'+ away +' miles away</div></div>');
             detected = 1;
         } else {
             if(!detected){
@@ -279,8 +287,8 @@ body {background-color:#fff;font-family:Arial;margin:0;overflow-x:hidden;-webkit
 .heading {background-color:#999;color:#eee;padding:5px;}  
 #compass, #accelerometer, #geolocation, #pin, #name {padding:5px}
 #spot {text-align:center}
-.name, .distance {color:#eee;text-shadow:0 1px #666}
-.name {font-size:30px;padding:15px;font-weight:bold;;background-color:#c22;border-radius:40px;margin-bottom:10px}
+.name, .distance {text-shadow:0 1px #666}
+.name {padding:15px;font-weight:bold;;background-color:#c22;border-radius:40px;margin-bottom:10px}
 #direction {color:#d55;font-size:20px;padding:15px;font-weight:bold;;background-color:#a22;border-radius:40px;display:inline-block;margin-bottom:10px;width:40px;line-height:40px}        
 .distance {font-size:14px;font-weight:normal;}
 #arView, #topView {display:none;}
