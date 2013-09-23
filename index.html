@@ -20,7 +20,7 @@
 var pin=[], markersArray = [], bounds;
 var myLat = 0, myLng = 0; 
 var bearing, distance;
-var dataLoaded = 0, q = "intel";                
+var dataStatus = 0, q = "intel";                
 
 // setup map and listen to deviceready        
 $( document ).ready(function() {
@@ -36,6 +36,27 @@ function onDeviceReady() {
     startCompass();
     startGeolocation();
 }
+        
+// setup google maps api        
+function setupMap(){
+    $("#map").height($(window).height()-60);
+    var mapOptions = {
+        zoom: 13,
+        mapTypeControl: false,
+        streetViewControl: false,
+        navigationControl: true,
+        scrollwheel: false,
+        navigationControlOptions: {style: google.maps.NavigationControlStyle.SMALL},
+        mapTypeId: google.maps.MapTypeId.ROADMAP
+    };
+    map = new google.maps.Map(document.getElementById("map"), mapOptions);
+}
+        
+// about notification        
+function about(){
+//   alert("Powered by Foursquare\n\nMaps by Google\n\nCordova, JQuery\n\nDeveloped using Intel XDK");
+   navigator.notification.alert( "Powered by Foursquare\n\nMaps by Google\n\nCordova and JQuery libraries\n\nDeveloped using Intel XDK\n\nBy Rakshith Krishnappa", null, "About Nearby App", "OK");
+}        
 
 // toggle between list view and map view        
 function toggleView(){
@@ -47,13 +68,6 @@ function toggleView(){
         $(".mapView").hide();
         $(".listView").fadeIn();
         $("#viewbtn").html("Map");
-    }
-} 
-
-// load data into list view from array        
-function loadData(){
-    for(var i=0;i<pin.length;i++){
-        $(".listItems").append("<div class='item'>"+pin[i].name+"</div>");
     }
 }
 
@@ -70,18 +84,22 @@ function refresh(){
 
 // get data from API and store in array, add to list view and create markers on map, calculate         
 function getData(query){
-    dataLoaded = 1;
+    dataStatus = "loading";
     $(".listItems").html("<div class='item'>Loading...</div>");
     var url = "https://api.foursquare.com/v2/venues/search?query="+query+"&ll="+myLat+","+myLng+"&intent=checkin&limit=20&v=20130203&client_id=V43B2QIU3DZS4BRPENPIARHSV4CUQS1OT2WNEVA1IDACLJGI&client_secret=HFWT1BCNVW4YGS3DSZPQG3CJC5CIUNAOAM4T0BRZ4DJYRVFT&callback=?";
     $.getJSON(url, function(data){
+        // clear list view and map markers and arrays
         $(".listItems").html("<div class='query'>&darr; Showing '"+q+"'</div>");
         pin=[];
         clearMarkers();
         markersArray = [];
 		bounds = new google.maps.LatLngBounds();
+        // add blue gps marker
         var icon = new google.maps.MarkerImage('http://www.google.com/intl/en_us/mapfiles/ms/micons/blue-dot.png',new google.maps.Size(30, 28),new google.maps.Point(0,0),new google.maps.Point(9, 28));
-        var marker = new google.maps.Marker({position: new google.maps.LatLng(myLat, myLng), map: map, title: "My Position", icon:icon});
-        markersArray.push(marker);
+        var gpsMarker = new google.maps.Marker({position: new google.maps.LatLng(myLat, myLng), map: map, title: "My Position", icon:icon});
+        bounds.extend(new google.maps.LatLng(myLat, myLng));
+        markersArray.push(gpsMarker);
+        // add all location markers to map and list view and array
         for(var i=0; i< data.response.venues.length; i++){
             var point = {};
             point['name'] = data.response.venues[i].name;
@@ -90,33 +108,18 @@ function getData(query){
             pin.push(point);
             $(".listItems").append("<div class='item'>"+pin[i].name+"</div>");
             addMarker(i);
-            map.fitBounds(bounds);
             relativePosition(i);
         }
+        map.fitBounds(bounds);
+        google.maps.event.trigger(map, "resize");
+        dataStatus = "loaded";
     });    
-}        
-
-// setup google maps api        
-function setupMap(){
-    $("#map").height($(window).height()-60);
-    var mapOptions = {
-        zoom: 13,
-        mapTypeControl: false,
-//        mapTypeControlOptions: {style: google.maps.MapTypeControlStyle.DROPDOWN_MENU, position: google.maps.ControlPosition.TOP_LEFT},
-        streetViewControl: false,
-        navigationControl: true,
-        scrollwheel: false,
-        navigationControlOptions: {style: google.maps.NavigationControlStyle.SMALL},
-        mapTypeId: google.maps.MapTypeId.ROADMAP
-    };
-    map = new google.maps.Map(document.getElementById("map"), mapOptions);
 }
 
 // add marker to map and in array        
 function addMarker(i){
 	var marker = new google.maps.Marker({position: new google.maps.LatLng(pin[i].lat, pin[i].lng), map: map, title: pin[i].name});
 	bounds.extend(new google.maps.LatLng(pin[i].lat, pin[i].lng));
-	google.maps.event.trigger(map, "resize");
 	markersArray.push(marker);
 } 
 
@@ -126,12 +129,6 @@ function clearMarkers() {
 		markersArray.pop().setMap(null);
 	}
 }        
-
-// about notification        
-function about(){
-//   alert("Powered by Foursquare\n\nMaps by Google\n\nCordova, JQuery\n\nDeveloped using Intel XDK");
-   navigator.notification.alert( "Powered by Foursquare\n\nMaps by Google\n\nCordova and JQuery libraries\n\nDeveloped using Intel XDK\n\nBy Rakshith Krishnappa", null, "About Nearby App", "OK");
-}
 
 // calulate distance and bearing value for each of the points wrt gps lat/lng        
 function relativePosition(i){
@@ -204,7 +201,7 @@ function onGeoSuccess(position) {
     document.getElementById('geolocation').innerHTML = 'Latitude: ' + position.coords.latitude + '<br />' + 'Longitude: ' + position.coords.longitude;
     myLat = position.coords.latitude;
     myLng = position.coords.longitude;
-    if(!dataLoaded){
+    if(!dataStatus){
         getData(q);
     }
 }
@@ -235,7 +232,7 @@ function onCompassSuccess(heading) {
     document.getElementById('compass').innerHTML = heading.magneticHeading + "<br>" + direction;
     document.getElementById('direction').innerHTML = direction;
     var degree = heading.magneticHeading;
-    if($("#arView").is(":visible")){
+    if($("#arView").is(":visible") && dataStatus != "loading"){
         calculateDirection(degree);
     }
 }
