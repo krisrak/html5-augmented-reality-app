@@ -24,13 +24,13 @@ var dataStatus = 0, q = "intel";
 
 // setup map and listen to deviceready        
 $( document ).ready(function() {
-    setupMap();
     document.addEventListener("deviceready", onDeviceReady, false);
 });
 
 // start device compass, accelerometer and geolocation after deviceready        
 function onDeviceReady() {
     document.getElementById('log').innerHTML += "deciveready.";
+    setupMap();
     // start cordova device sensors
     startAccelerometer();
     startCompass();
@@ -156,8 +156,8 @@ function calculateDirection(degree){
     $("#spot").html("");
     for(var i=0;i<pin.length;i++){
         if(Math.abs(pin[i].bearing - degree) <= 20){
-        //    pin[i]['degree'] = pin[i].bearing - degree;
             var away, fontSize, fontColor;
+            // varry font size based on distance from gps location
             if(pin[i].distance>5){
                 away = Math.round(pin[i].distance);
                 fontSize = "16";
@@ -320,7 +320,7 @@ body {background-color:#fff;font-family:Arial;margin:0;overflow-x:hidden;-webkit
             <div id="actionbtn" class="navbtn" onclick="refresh()"> &crarr; </div>
             <div id="viewbtn" class="navbtn" onclick="toggleView()">Map</div>    
             <div class="navtitle">Nearby</div> 
-        </div>    
+        </div>
         <div class="listView">
             <div class="searchbox"><input id="search" type="text" placeholder="Search Anything"  onKeyPress='if ((event.which && event.which == 13) || (event.keyCode && event.keyCode == 13)) {searchData()} else return true;'></div>
             <div class="listItems"></div>
