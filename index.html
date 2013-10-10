@@ -30,6 +30,7 @@ $( document ).ready(function() {
 // start device compass, accelerometer and geolocation after deviceready        
 function onDeviceReady() {
     document.getElementById('log').innerHTML += "deciveready.";
+    navigator.splashscreen.hide();
     setupMap();
     // start cordova device sensors
     startAccelerometer();
@@ -62,6 +63,7 @@ function about(){
 function toggleView(){
     if($(".listView").is(":visible")){
         $(".listView").hide();
+        $("#map").height($(window).height()-60);
         $(".mapView").fadeIn(function(){google.maps.event.trigger(map, "resize");map.fitBounds(bounds);});
         $("#viewbtn").html("List");
     } else {
@@ -256,7 +258,7 @@ function stopAccelerometer() {
     }
 }
 
-// onSuccess: draw line based on tilt and amount of tilt
+// onSuccess: Get current accelerometer values
 function onAccelerometerSuccess(acceleration) {
     // for debug purpose to print out accelerometer values
 	var element = document.getElementById('accelerometer');
