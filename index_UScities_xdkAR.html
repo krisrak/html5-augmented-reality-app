@@ -1,0 +1,342 @@
+<!doctype html>
+<html>
+  <head>
+    <title>Nearby</title>
+    <meta http-equiv="Content-type" content="text/html; charset=utf-8">
+    <meta name="Copyright" content="&copy; 2013, Intel Corporation. All rights reserved." />
+    <meta name="Author" content="Rakshith Krishnappa" />
+<!--
+ * Copyright (c) 2013, Intel Corporation. All rights reserved.
+ * Please see http://software.intel.com/html5/license/samples 
+ * and the included README.md file for license terms and conditions.
+-->      
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+
+    <script src="http://maps.google.com/maps/api/js?sensor=true"></script>
+    <script src="lib/jquery/jquery-1.8.2.min.js"></script>
+    <script src="intelxdk.js"></script>
+    <script src="cordova.js"></script>
+    <script>
+var pin = [
+    {"name":"New York", "lat":"40.714353", "lng":"-74.005973"},
+    {"name":"San Francisco", "lat":"37.77493", "lng":"-122.419416"},
+    {"name":"Seattle", "lat":"47.60621", "lng":"-122.332071"},
+    {"name":"Los Angeles", "lat":"34.052234", "lng":"-118.243685"},
+    {"name":"Denver", "lat":"39.737567", "lng":"-104.984718"},
+    {"name":"Chicago", "lat":"41.878114", "lng":"-87.629798"},
+    {"name":"Austin", "lat":"30.267153", "lng":"-97.743061"},
+    {"name":"Miami", "lat":"25.788969", "lng":"-80.226439"},
+    {"name":"Pittsburg", "lat":"40.440625", "lng":"-79.995886"},
+    {"name":"Phoenix", "lat":"33.448377", "lng":"-112.074037"},
+    {"name":"Atlanta", "lat":"33.748995", "lng":"-84.387982"},
+    {"name":"Kansas City", "lat":"39.099727", "lng":"-94.578567"}
+];        
+var markersArray = [], bounds;
+var myLat = 0, myLng = 0; 
+var bearing, distance;
+var dataStatus = 0;                
+
+// setup map and listen to deviceready        
+$( document ).ready(function() {
+    document.addEventListener("deviceready", onDeviceReady, false);
+});
+
+// start device compass, accelerometer and geolocation after deviceready        
+function onDeviceReady() {
+    navigator.splashscreen.hide();
+    setupMap();
+    // start cordova device sensors
+    startAccelerometer();
+    startCompass();
+    startGeolocation();
+}
+        
+// start intel.xdk augmented reality mode, adds camera in background       
+function xdkStartAR(){
+    intel.xdk.display.startAR(); 
+    $('#arView').css('background-color','transparent');
+    $('body').css('background-color','transparent');
+}
+        
+// stop intel.xdk augmented reality mode        
+function xdkStopAR(){
+    intel.xdk.display.stopAR(); 
+}        
+        
+// setup google maps api        
+function setupMap(){
+    $("#map").height($(window).height()-60);
+    var mapOptions = {
+        zoom: 13,
+        mapTypeControl: false,
+        streetViewControl: false,
+        navigationControl: true,
+        scrollwheel: false,
+        navigationControlOptions: {style: google.maps.NavigationControlStyle.SMALL},
+        mapTypeId: google.maps.MapTypeId.ROADMAP
+    };
+    map = new google.maps.Map(document.getElementById("map"), mapOptions);
+}       
+
+// toggle between list view and map view        
+function toggleView(){
+    if($(".listView").is(":visible")){
+        $(".listView").hide();
+        $("#map").height($(window).height()-60);
+        $(".mapView").fadeIn(function(){google.maps.event.trigger(map, "resize");map.fitBounds(bounds);});
+        $("#viewbtn").html("List");
+    } else {
+        $(".mapView").hide();
+        $(".listView").fadeIn();
+        $("#viewbtn").html("Map");
+    }
+}
+
+// get data from API and store in array, add to list view and create markers on map, calculate         
+function loadData(){
+    dataStatus = "loading";
+    markersArray = [];
+    bounds = new google.maps.LatLngBounds();
+    // add blue gps marker
+    var icon = new google.maps.MarkerImage('http://www.google.com/intl/en_us/mapfiles/ms/micons/blue-dot.png',new google.maps.Size(30, 28),new google.maps.Point(0,0),new google.maps.Point(9, 28));
+    var gpsMarker = new google.maps.Marker({position: new google.maps.LatLng(myLat, myLng), map: map, title: "My Position", icon:icon});
+    bounds.extend(new google.maps.LatLng(myLat, myLng));
+    markersArray.push(gpsMarker);
+    // add all location markers to map and list view and array
+    for(var i=0; i< pin.length; i++){
+        $(".listItems").append("<div class='item'>"+pin[i].name+"</div>");
+        addMarker(i);
+        relativePosition(i);
+    }
+    map.fitBounds(bounds);
+    google.maps.event.trigger(map, "resize");
+    dataStatus = "loaded";   
+}
+
+// add marker to map and in array        
+function addMarker(i){
+	var marker = new google.maps.Marker({position: new google.maps.LatLng(pin[i].lat, pin[i].lng), map: map, title: pin[i].name});
+	bounds.extend(new google.maps.LatLng(pin[i].lat, pin[i].lng));
+	markersArray.push(marker);
+} 
+
+// clear all markers from map and array        
+function clearMarkers() {
+	while (markersArray.length) {
+		markersArray.pop().setMap(null);
+	}
+}        
+
+// calulate distance and bearing value for each of the points wrt gps lat/lng        
+function relativePosition(i){
+    var pinLat = pin[i].lat;
+    var pinLng = pin[i].lng;
+    var dLat = (myLat-pinLat)* Math.PI / 180;
+    var dLon = (myLng-pinLng)* Math.PI / 180;
+    var lat1 = pinLat * Math.PI / 180;
+    var lat2 = myLat * Math.PI / 180;
+    var y = Math.sin(dLon) * Math.cos(lat2);
+    var x = Math.cos(lat1)*Math.sin(lat2) - Math.sin(lat1)*Math.cos(lat2)*Math.cos(dLon);
+    bearing = Math.atan2(y, x) * 180 / Math.PI;
+    bearing = bearing + 180;
+    pin[i]['bearing'] = bearing;
+    
+    var a = Math.sin(dLat/2) * Math.sin(dLat/2) + Math.sin(dLon/2) * Math.sin(dLon/2) * Math.cos(lat1) * Math.cos(lat2); 
+    var c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a)); 
+    distance = 3958.76  * c;
+    pin[i]['distance'] = distance;
+}
+
+// calculate direction of points and display        
+function calculateDirection(degree){
+    var detected = 0;
+    $("#spot").html("");
+    for(var i=0;i<pin.length;i++){
+        if(Math.abs(pin[i].bearing - degree) <= 20){
+            var away, fontSize, fontColor;
+            // varry font size based on distance from gps location
+            if(pin[i].distance>1500){
+                away = Math.round(pin[i].distance);
+                fontSize = "16";
+                fontColor = "#ccc";
+            } else if(pin[i].distance>500){
+                away = Math.round(pin[i].distance);
+                fontSize = "24";
+                fontColor = "#ddd";
+            } else {
+                away = pin[i].distance.toFixed(2);
+                fontSize = "30";
+                fontColor = "#eee";
+            }
+            $("#spot").append('<div class="name" data-id="'+i+'" style="margin-left:'+(((pin[i].bearing - degree) * 5)+50)+'px;width:'+($(window).width()-100)+'px;font-size:'+fontSize+'px;color:'+fontColor+'">'+pin[i].name+'<div class="distance">'+ away +' miles away</div></div>');
+            detected = 1;
+        } else {
+            if(!detected){
+                $("#spot").html("");
+            }
+        }
+    }
+    
+} 
+        
+// Start watching the geolocation        
+function startGeolocation(){
+    var options = { timeout: 30000 };
+    watchGeoID = navigator.geolocation.watchPosition(onGeoSuccess, onGeoError, options);
+}
+        
+// Stop watching the geolocation
+function stopGeolocation() {
+    if (watchGeoID) {
+        navigator.geolocation.clearWatch(watchGeoID);
+        watchGeoID = null;
+    }
+}
+        
+// onSuccess: Get the current location
+function onGeoSuccess(position) {
+    document.getElementById('geolocation').innerHTML = 'Latitude: ' + position.coords.latitude + '<br />' + 'Longitude: ' + position.coords.longitude;
+    myLat = position.coords.latitude;
+    myLng = position.coords.longitude;
+    if(!dataStatus){
+        loadData();
+    }
+}
+
+// onError: Failed to get the location
+function onGeoError() {
+    document.getElementById('log').innerHTML += "onError=.";
+} 
+    
+// Start watching the compass
+function startCompass() {
+    var options = { frequency: 100 };
+    watchCompassID = navigator.compass.watchHeading(onCompassSuccess, onCompassError, options);
+}
+
+// Stop watching the compass
+function stopCompass() {
+    if (watchCompassID) {
+        navigator.compass.clearWatch(watchCompassID);
+        watchCompassID = null;
+    }
+}
+
+// onSuccess: Get the current heading
+function onCompassSuccess(heading) {
+    var directions = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW', 'N'];
+    var direction = directions[Math.abs(parseInt((heading.magneticHeading) / 45) + 1)];
+    document.getElementById('compass').innerHTML = heading.magneticHeading + "<br>" + direction;
+    document.getElementById('direction').innerHTML = direction;
+    var degree = heading.magneticHeading;
+    if($("#arView").is(":visible") && dataStatus != "loading"){
+        calculateDirection(degree);
+    }
+}
+
+// onError: Failed to get the heading
+function onCompassError(compassError) {
+    document.getElementById('log').innerHTML += "onError=."+compassError.code;
+}        
+        
+// Start checking the accelerometer
+function startAccelerometer() {
+    var options = { frequency: 100 };
+    watchAccelerometerID = navigator.accelerometer.watchAcceleration(onAccelerometerSuccess, onAccelerometerError, options);
+}
+
+// Stop checking the accelerometer
+function stopAccelerometer() {
+    if (watchAccelerometerID) {
+        navigator.accelerometer.clearWatch(watchAccelerometerID);
+        watchAccelerometerID = null;
+    }
+}
+
+// onSuccess: Get current accelerometer values
+function onAccelerometerSuccess(acceleration) {
+    // for debug purpose to print out accelerometer values
+	var element = document.getElementById('accelerometer');
+    element.innerHTML = 'Acceleration X: ' + acceleration.x + '<br />' +
+                        'Acceleration Y: ' + acceleration.y + '<br />' +
+                        'Acceleration Z: ' + acceleration.z ;
+    if(acceleration.y > 7){
+        $("#arView").fadeIn();
+        $("#topView").hide();
+        document.getElementById('body').style.background = "#d22";
+        xdkStartAR();
+    } else {
+        $("#arView").hide();
+        $("#topView").fadeIn();
+        document.getElementById('body').style.background = "#fff";
+        xdkStopAR();
+    }
+}
+
+// onError: Failed to get the acceleration
+function onAccelerometerError() {
+    document.getElementById('log').innerHTML += "onError.";
+}
+    </script>
+    <style>
+body {background-color:#fff;font-family:Arial;margin:0;overflow-x:hidden;-webkit-user-select: none;}
+.navbar {background-color:#222;height:40px;padding:10px;text-align:center;color:#fff;font-size:20px;font-weight:bold;line-height:40px;}
+.navtitle {text-align:center;margin:auto}
+.navbtn {background-color:#333;padding:5px 10px;height:30px;color:#fff;font-size:18px;font-weight:bold;line-height:30px;border-radius:4px;border:1px solid #666} 
+#actionbtn {float:right;}
+#viewbtn {float:left;}
+.query {padding:10px;background-color:#aaa;border-bottom:1px solid #fff;font-size:14px;font-weight:bold;color:#222;}
+.item {padding:20px 10px; background-color:#eee;border-bottom:1px solid #fff;font-size:18px;color:#333;text-shadow:0 1px #fff}
+.searchbox {padding:5px;background-color:#eee;border-bottom:1px solid #fff;}
+#search {box-sizing: border-box;width:100%;height:40px;font-size:16px;border-radius:20px;border:1px solid #bbb}
+.mapView {display:none}
+#map {height:200px;}
+#arView, #topView {display:none;}
+#arView{padding:30px 0; height:70px;text-align:center}
+.arMessage {color:#ddd;font-size:14px;text-shadow: 0 0 0.2em #000, 0 0 0.2em #000,0 0 0.2em #000}
+#spot {text-align:center}
+.name, .distance {text-shadow:0 1px #666}
+.name {padding:15px;font-weight:bold;;background-color:#c22;border-radius:40px;margin-bottom:10px}
+#direction {color:#d55;font-size:20px;padding:15px;font-weight:bold;;background-color:#a22;border-radius:40px;display:inline-block;margin-bottom:10px;width:40px;line-height:40px}
+.distance {font-size:14px;font-weight:normal;}
+#debug {border:1px solid #999;display:none}
+.heading {background-color:#999;color:#eee;padding:5px;}
+#compass, #accelerometer, #geolocation {padding:5px}
+    </style>
+  </head>
+  <body id="body">  
+    <div id="arView">
+        <div class="arMessage">&uarr;<br>Tilt down to see all places</div>
+        <br>
+        <div class="arMessage">&larr; Move the device around to find spots &rarr;</div>
+        <br>
+        <div id="direction"></div>
+        <br>
+        <div id="spot"></div>
+    </div>
+    <div id="topView">
+        <div class="navbar">
+            <div id="actionbtn" class="navbtn"> &crarr; </div>
+            <div id="viewbtn" class="navbtn" onclick="toggleView()">Map</div>    
+            <div class="navtitle">Nearby</div> 
+        </div>
+        <div class="listView">
+            <div class="listItems"></div>
+        </div>
+        <div class="mapView">
+            <div id="map"></div>
+        </div>
+    </div>
+    <div id="debug">  
+        <div class="heading">Geolocation</div>
+        <div id="geolocation"></div>
+        <div class="heading">Compass</div>
+        <div id="compass"></div>
+        <div class="heading">Accelerometer</div>
+        <div id="accelerometer"></div>
+        <div class="heading">Log</div>
+        <div id="log"></div>
+    </div>      
+  </body>
+</html>
