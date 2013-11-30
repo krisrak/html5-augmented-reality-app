@@ -17,10 +17,24 @@
     <script src="lib/jquery/jquery-1.8.2.min.js"></script>
     <script src="cordova.js"></script>
     <script>
-var pin=[], markersArray = [], bounds;
+var pin = [
+    {"name":"New York", "lat":"40.714353", "lng":"-74.005973"},
+    {"name":"San Francisco", "lat":"37.77493", "lng":"-122.419416"},
+    {"name":"Seattle", "lat":"47.60621", "lng":"-122.332071"},
+    {"name":"Los Angeles", "lat":"34.052234", "lng":"-118.243685"},
+    {"name":"Denver", "lat":"39.737567", "lng":"-104.984718"},
+    {"name":"Chicago", "lat":"41.878114", "lng":"-87.629798"},
+    {"name":"Austin", "lat":"30.267153", "lng":"-97.743061"},
+    {"name":"Miami", "lat":"25.788969", "lng":"-80.226439"},
+    {"name":"Pittsburg", "lat":"40.440625", "lng":"-79.995886"},
+    {"name":"Phoenix", "lat":"33.448377", "lng":"-112.074037"},
+    {"name":"Atlanta", "lat":"33.748995", "lng":"-84.387982"},
+    {"name":"Kansas City", "lat":"39.099727", "lng":"-94.578567"}
+];        
+var markersArray = [], bounds;
 var myLat = 0, myLng = 0; 
 var bearing, distance;
-var dataStatus = 0, q = "intel";                
+var dataStatus = 0;                
 
 // setup map and listen to deviceready        
 $( document ).ready(function() {
@@ -29,7 +43,6 @@ $( document ).ready(function() {
 
 // start device compass, accelerometer and geolocation after deviceready        
 function onDeviceReady() {
-    document.getElementById('log').innerHTML += "deciveready.";
     navigator.splashscreen.hide();
     setupMap();
     // start cordova device sensors
@@ -51,12 +64,6 @@ function setupMap(){
         mapTypeId: google.maps.MapTypeId.ROADMAP
     };
     map = new google.maps.Map(document.getElementById("map"), mapOptions);
-}
-        
-// about notification        
-function about(){
-//   alert("Powered by Foursquare\n\nMaps by Google\n\nCordova, JQuery\n\nDeveloped using Intel XDK");
-   navigator.notification.alert( "Powered by Foursquare\n\nMaps by Google\n\nCordova and JQuery libraries\n\nDeveloped using Intel XDK\n\nBy Rakshith Krishnappa", null, "About Nearby App", "OK");
 }        
 
 // toggle between list view and map view        
@@ -73,49 +80,25 @@ function toggleView(){
     }
 }
 
-// new search data        
-function searchData(){
-    q = $("#search").val();
-    getData(q);    
-}
-
-// refresh new data        
-function refresh(){
-    getData(q);
-}
-
 // get data from API and store in array, add to list view and create markers on map, calculate         
-function getData(query){
+function loadData(){
     dataStatus = "loading";
-    $(".listItems").html("<div class='item'>Loading...</div>");
-    var url = "https://api.foursquare.com/v2/venues/search?query="+query+"&ll="+myLat+","+myLng+"&intent=checkin&limit=20&v=20130203&client_id=V43B2QIU3DZS4BRPENPIARHSV4CUQS1OT2WNEVA1IDACLJGI&client_secret=HFWT1BCNVW4YGS3DSZPQG3CJC5CIUNAOAM4T0BRZ4DJYRVFT&callback=?";
-    $.getJSON(url, function(data){
-        // clear list view and map markers and arrays
-        $(".listItems").html("<div class='query'>&darr; Showing '"+q+"'</div>");
-        pin=[];
-        clearMarkers();
-        markersArray = [];
-		bounds = new google.maps.LatLngBounds();
-        // add blue gps marker
-        var icon = new google.maps.MarkerImage('http://www.google.com/intl/en_us/mapfiles/ms/micons/blue-dot.png',new google.maps.Size(30, 28),new google.maps.Point(0,0),new google.maps.Point(9, 28));
-        var gpsMarker = new google.maps.Marker({position: new google.maps.LatLng(myLat, myLng), map: map, title: "My Position", icon:icon});
-        bounds.extend(new google.maps.LatLng(myLat, myLng));
-        markersArray.push(gpsMarker);
-        // add all location markers to map and list view and array
-        for(var i=0; i< data.response.venues.length; i++){
-            var point = {};
-            point['name'] = data.response.venues[i].name;
-            point['lat'] = data.response.venues[i].location.lat;
-            point['lng'] = data.response.venues[i].location.lng;
-            pin.push(point);
-            $(".listItems").append("<div class='item'>"+pin[i].name+"</div>");
-            addMarker(i);
-            relativePosition(i);
-        }
-        map.fitBounds(bounds);
-        google.maps.event.trigger(map, "resize");
-        dataStatus = "loaded";
-    });    
+    markersArray = [];
+    bounds = new google.maps.LatLngBounds();
+    // add blue gps marker
+    var icon = new google.maps.MarkerImage('http://www.google.com/intl/en_us/mapfiles/ms/micons/blue-dot.png',new google.maps.Size(30, 28),new google.maps.Point(0,0),new google.maps.Point(9, 28));
+    var gpsMarker = new google.maps.Marker({position: new google.maps.LatLng(myLat, myLng), map: map, title: "My Position", icon:icon});
+    bounds.extend(new google.maps.LatLng(myLat, myLng));
+    markersArray.push(gpsMarker);
+    // add all location markers to map and list view and array
+    for(var i=0; i< pin.length; i++){
+        $(".listItems").append("<div class='item'>"+pin[i].name+"</div>");
+        addMarker(i);
+        relativePosition(i);
+    }
+    map.fitBounds(bounds);
+    google.maps.event.trigger(map, "resize");
+    dataStatus = "loaded";   
 }
 
 // add marker to map and in array        
@@ -160,11 +143,11 @@ function calculateDirection(degree){
         if(Math.abs(pin[i].bearing - degree) <= 20){
             var away, fontSize, fontColor;
             // varry font size based on distance from gps location
-            if(pin[i].distance>5){
+            if(pin[i].distance>1500){
                 away = Math.round(pin[i].distance);
                 fontSize = "16";
                 fontColor = "#ccc";
-            } else if(pin[i].distance>2){
+            } else if(pin[i].distance>500){
                 away = Math.round(pin[i].distance);
                 fontSize = "24";
                 fontColor = "#ddd";
@@ -204,7 +187,7 @@ function onGeoSuccess(position) {
     myLat = position.coords.latitude;
     myLng = position.coords.longitude;
     if(!dataStatus){
-        getData(q);
+        loadData();
     }
 }
 
@@ -319,18 +302,17 @@ body {background-color:#fff;font-family:Arial;margin:0;overflow-x:hidden;-webkit
     </div>
     <div id="topView">
         <div class="navbar">
-            <div id="actionbtn" class="navbtn" onclick="refresh()"> &crarr; </div>
+            <div id="actionbtn" class="navbtn"> &crarr; </div>
             <div id="viewbtn" class="navbtn" onclick="toggleView()">Map</div>    
             <div class="navtitle">Nearby</div> 
         </div>
         <div class="listView">
-            <div class="searchbox"><input id="search" type="text" placeholder="Search Anything"  onKeyPress='if ((event.which && event.which == 13) || (event.keyCode && event.keyCode == 13)) {searchData()} else return true;'></div>
             <div class="listItems"></div>
         </div>
         <div class="mapView">
             <div id="map"></div>
         </div>
-    </div>      
+    </div>
     <div id="debug">  
         <div class="heading">Geolocation</div>
         <div id="geolocation"></div>
@@ -340,7 +322,6 @@ body {background-color:#fff;font-family:Arial;margin:0;overflow-x:hidden;-webkit
         <div id="accelerometer"></div>
         <div class="heading">Log</div>
         <div id="log"></div>
-    </div>
-<!--    <script src="http://debug-software.intel.com/target/target-script-min.js#9ddff4f5-bc93-4e9f-9b7c-d38510fe6e79"/>      -->
+    </div>      
   </body>
 </html>
