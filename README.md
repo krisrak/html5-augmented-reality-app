@@ -44,3 +44,26 @@ Shows foursquare places data in list view, map view and augmented reality mode. 
 __index.html = index_UScities.html__
 
 =
+
+Screenshots
+=
+
+###foursquare listView###
+![alt tag](https://raw.github.com/krisrak/html5-augmented-reality-app/master/screenshots/foursquare_listView.png)  
+
+-
+
+###foursquare mapView###
+![alt tag](https://raw.github.com/krisrak/html5-augmented-reality-app/master/screenshots/foursquare_mapView.png)
+ 
+- 
+   
+###foursquare XDK AR mode###
+![alt tag](https://raw.github.com/krisrak/html5-augmented-reality-app/master/screenshots/foursquare_xdkARmode.png)  
+
+-
+
+###US Cities AR mode###
+![alt tag](https://raw.github.com/krisrak/html5-augmented-reality-app/master/screenshots/UScities_ARmode.png)
+
+-
